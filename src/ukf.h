@@ -73,6 +73,9 @@ public:
 
   ///* the current NIS for laser
   double NIS_laser_;
+  
+  // instance of Tools for utility functions
+  Tools tools;
 
   /**
    * Constructor
