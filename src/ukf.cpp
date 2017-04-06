@@ -70,19 +70,49 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   Complete this function! Make sure you switch between lidar and radar
   measurements.
   */
+  
+  
+  
   if (!is_initialized_){
     std::cout<<"Initialize\n";
     
+    // initialize time
+    time_us_ = measurement_pack.timestamp_;
+    
     if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
       /*TODO*/
+      // check for rho not too near 0.0
+      if (measurement_pack.raw_measurements_(0) > 0.001){
+        x_ = tools.Polar2Cartesian(measurement_pack.raw_measurements_);
+      } else {
+      // default values if first measurement is close to rho = 0.0
+        x_(0) = 0.1;
+        x_(1) = 0.1;
+      }
     }
     else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
-      /*TODO*/
+      // check for (x,y) not too near (0.0, 0.0)
+      if ((measurement_pack.raw_measurements_(0) > 0.001) && (measurement_pack.raw_measurements_(1) > 0.001)){
+        x_(0) = measurement_pack.raw_measurements_(0);
+        x_(1) = measurement_pack.raw_measurements_(1);
+      } else {
+        // default values if first measurement is close to (x, y) = (0.0, 0.0)
+        x_(0) = 0.1;
+        x_(1) = 0.1;
+      }
     }
 
     // done initializing, no need to predict or update
     is_initialized_ = true;
+  } else {
+    // update time information
+    float dt = time_us-measurement_pack.timestamp_;
+    time_us_ = measurement_pack.timestamp_;
+    
+    /*TODO*/
+    
   }
+  
 }
 
 /**
