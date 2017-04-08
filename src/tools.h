@@ -20,6 +20,11 @@ public:
   */
   Eigen::VectorXd CalculateRMSE(const std::vector<Eigen::VectorXd> &estimations, const std::vector<Eigen::VectorXd> &ground_truth);
 
+  /**
+  * A coordinate system transformation.
+  */
+  Eigen::VectorXd Polar2Cartesian(const Eigen::VectorXd& radar_meas);
+  
 };
 
 #endif /* TOOLS_H_ */
