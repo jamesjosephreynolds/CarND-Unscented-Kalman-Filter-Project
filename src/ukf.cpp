@@ -83,24 +83,24 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     std::cout<<"Initialize\n";
     
     // initialize time
-    time_us_ = measurement_pack.timestamp_;
+    time_us_ = meas_package.timestamp_;
     
-    if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
+    if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       /*TODO*/
       // check for rho not too near 0.0
-      if (measurement_pack.raw_measurements_(0) > 0.001){
-        x_ = tools.Polar2Cartesian(measurement_pack.raw_measurements_);
+      if (meas_package.raw_measurements_(0) > 0.001){
+        x_ = tools.Polar2Cartesian(meas_package.raw_measurements_);
       } else {
       // default values if first measurement is close to rho = 0.0
         x_(0) = 0.1;
         x_(1) = 0.1;
       }
     }
-    else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
+    else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
       // check for (x,y) not too near (0.0, 0.0)
-      if ((measurement_pack.raw_measurements_(0) > 0.001) && (measurement_pack.raw_measurements_(1) > 0.001)){
-        x_(0) = measurement_pack.raw_measurements_(0);
-        x_(1) = measurement_pack.raw_measurements_(1);
+      if ((meas_package.raw_measurements_(0) > 0.001) && (meas_package.raw_measurements_(1) > 0.001)){
+        x_(0) = meas_package.raw_measurements_(0);
+        x_(1) = meas_package.raw_measurements_(1);
       } else {
         // default values if first measurement is close to (x, y) = (0.0, 0.0)
         x_(0) = 0.1;
@@ -112,8 +112,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     is_initialized_ = true;
   } else {
     // update time information
-    float dt = time_us-measurement_pack.timestamp_;
-    time_us_ = measurement_pack.timestamp_;
+    float dt = time_us_-meas_package.timestamp_;
+    time_us_ = meas_package.timestamp_;
     
     /*TODO*/
     
