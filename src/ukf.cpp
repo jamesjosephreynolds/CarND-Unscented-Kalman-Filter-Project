@@ -25,10 +25,10 @@ UKF::UKF() {
   P_ = MatrixXd(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 30;
+  std_a_ = 3; //std_a_ = 30;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 30;
+  std_yawdd_ = 0.3; //std_yawdd_ = 30;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -45,13 +45,19 @@ UKF::UKF() {
   // Radar measurement noise standard deviation radius change in m/s
   std_radrd_ = 0.3;
 
-  /**
-  TODO:
-
-  Complete the initialization. See ukf.h for other member properties.
-
-  Hint: one or more values initialized above might be wildly off...
-  */
+  // Dimensionality of the state vector: x, y, v, phi, phi_dot
+  n_x_ = 5;
+  
+  // Dimensionality of the augmented state: x, y, v, phi, phi_dot, v_dot, phi_dot_dot
+  n_aug_ = 7;
+  
+  // Lambda parameter for predicting sigma points
+  lambda_ = 3.0 - double(n_aug_);
+  
+  // Consistency measures
+  NIS_laser_ = 0.0;
+  NIS_radar_ = 0.0;
+  
 }
 
 UKF::~UKF() {}
