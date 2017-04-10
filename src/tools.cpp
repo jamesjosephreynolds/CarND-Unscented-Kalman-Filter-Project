@@ -63,8 +63,8 @@ VectorXd Tools::Polar2Cartesian(const VectorXd& radar_meas) {
   return f_x;
 }
 
-MatrixXd GenSigmaPts(const Eigen::VectorXd& x, const Eigen::VectorXd& P,
-                     double std_a, double std_yawdd, double lambda, int n_x, int n_aug) {
+void Tools::GenSigmaPts(MatrixXd& Xsig_aug, const VectorXd& x, const MatrixXd& P,
+                    double std_a, double std_yawdd, double lambda, int n_x, int n_aug) {
   /*
    * Augment state vector and covariance matrix, calculate
    *augmented sigma point matrix
@@ -82,7 +82,6 @@ MatrixXd GenSigmaPts(const Eigen::VectorXd& x, const Eigen::VectorXd& P,
   P_aug(n_aug-2,n_aug-2) = std_a*std_a;
   P_aug(n_aug-1,n_aug-1) = std_yawdd*std_yawdd;
   
-  MatrixXd Xsig_aug(n_aug, 2 * n_aug + 1);
   MatrixXd A = P_aug.llt().matrixL();
   
   Xsig_aug.col(0) = x_aug;
@@ -93,11 +92,9 @@ MatrixXd GenSigmaPts(const Eigen::VectorXd& x, const Eigen::VectorXd& P,
       Xsig_aug.col(idx) = x_aug-sqrt(lambda+n_aug)*A.col(idx-(n_x+1));
     }
   }
-  
-  return Xsig_aug;
 }
 
-Eigen::MatrixXd PredSigmaPts(const Eigen::MatrixXd& Xsig_aug, double dt, int n_x, int n_aug) {
+void Tools::PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, int n_x, int n_aug) {
   /*
    * Use nonlinear f(x,v) to update sigma points
    */
@@ -106,13 +103,13 @@ Eigen::MatrixXd PredSigmaPts(const Eigen::MatrixXd& Xsig_aug, double dt, int n_x
   
   for (int i = 0; i < (2*n_aug+1); ++i){
     // input values
-    double px       = Xsig(0,i); // x-position
-    double py       = Xsig(1,i); // y-position
-    double v        = Xsig(2,i); // velocity magnitude
-    double yaw      = Xsig(3,i); // velocity direction
-    double yawd     = Xsig(4,i); // rate of change of direction
-    double nu_a     = Xsig(5,i); // process noise, longitudinal acceleration
-    double nu_yawdd = Xsig(6,i); // process noise, lateral acceleration
+    double px       = Xsig_aug(0,i); // x-position
+    double py       = Xsig_aug(1,i); // y-position
+    double v        = Xsig_aug(2,i); // velocity magnitude
+    double yaw      = Xsig_aug(3,i); // velocity direction
+    double yawd     = Xsig_aug(4,i); // rate of change of direction
+    double nu_a     = Xsig_aug(5,i); // process noise, longitudinal acceleration
+    double nu_yawdd = Xsig_aug(6,i); // process noise, lateral acceleration
     
     // predicted values
     double px_p, py_p, v_p, yaw_p, yawd_p;
@@ -140,18 +137,16 @@ Eigen::MatrixXd PredSigmaPts(const Eigen::MatrixXd& Xsig_aug, double dt, int n_x
     yawd_p += nu_yawdd*dt;
     
     // place temp variables back into matrix
-    Xsig(0,i) = px_p;
-    Xsig(1,i) = py_p;
-    Xsig(2,i) = v_p;
-    Xsig(3,i) = yaw_p;
-    Xsig(4,i) = yawd_p;
+    Xpred(0,i) = px_p;
+    Xpred(1,i) = py_p;
+    Xpred(2,i) = v_p;
+    Xpred(3,i) = yaw_p;
+    Xpred(4,i) = yawd_p;
     
   }
-  
-  return Xsig;
 }
 
-void PredMean(Eigen::VectorXd & x, Eigen::MatrixXd Xpred, Eigen::VectorXd w) {
+void Tools::PredMean(VectorXd& x, const MatrixXd& Xpred, VectorXd& w) {
   int n_sig = Xpred.cols();
   
   // clear previous value in x
@@ -161,4 +156,21 @@ void PredMean(Eigen::VectorXd & x, Eigen::MatrixXd Xpred, Eigen::VectorXd w) {
   for (int i = 0; i < n_sig; ++i) {
     x += w(i)*Xpred.col(i); //weighted column i
   }
+}
+
+void Tools::PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred, const VectorXd& w) {
+  int n_sig = Xpred.cols();
+  
+  // clear previous value in P
+  P.fill(0.0);
+  
+  // accumulate covariance
+  for (int i = 0; i < n_sig; ++i){
+    VectorXd col = Xpred.col(i)-x;
+    //normalize angular differences between -pi and pi
+    while (col(3)> M_PI) col(3)-=2.*M_PI;
+    while (col(3)<-M_PI) col(3)+=2.*M_PI;
+    P += w(i)*col*col.transpose();
+  }
+
 }

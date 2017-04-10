@@ -13,7 +13,7 @@ using std::vector;
  */
 UKF::UKF() {
   // initialization flag
-  bool is_initialized_ = false;
+  is_initialized_ = false;
   
   // if this is false, laser measurements will be ignored (except during init)
   use_laser_ = true;
@@ -28,10 +28,10 @@ UKF::UKF() {
   P_ = MatrixXd(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 3; //std_a_ = 30;
+  std_a_ = 0.0;//3; //std_a_ = 30;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.3; //std_yawdd_ = 30;
+  std_yawdd_ = 0.0; //std_yawdd_ = 30;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -116,18 +116,19 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     // initialize P matrix, use large numbers for unknown initial x values
     P_ << 1, 0,    0,    0,    0,
           0, 1,    0,    0,    0,
-          0, 0, 1000,    0,    0,
-          0, 0,    0, 1000,    0,
-          0, 0,    0,    0, 1000;
+          0, 0, 0.1,    0,    0,
+          0, 0,    0, 0.1,    0,
+          0, 0,    0,    0, 0.1;
 
     // done initializing, no need to predict or update
     is_initialized_ = true;
   } else {
     // update time information
-    double dt = time_us_-meas_package.timestamp_;
+    double dt = 0.000001*(time_us_-meas_package.timestamp_);
     time_us_ = meas_package.timestamp_;
     
     /*TODO*/
+    Prediction(dt);
     
   }
   
@@ -140,13 +141,17 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
  */
 void UKF::Prediction(double delta_t) {
   // Generate and predict sigma points
-  int n_sig = 2*n_aug_ + 1;
+  int n_sig = 2*n_aug_+1;
   MatrixXd Xsig_aug(n_aug_, n_sig);
-  Xsig_aug = tools.GenSigmaPts(x_, P_, std_a_, std_yawdd_, lambda_, n_x_, n_aug_);
-  //MatrixXd Xpred = tools.PredSigmaPts(Xsig_aug, delta_t, n_x_, n_aug_);
+  MatrixXd Xpred(n_x_, n_sig);
+  
+  tools.GenSigmaPts(Xsig_aug, x_, P_, std_a_, std_yawdd_, lambda_, n_x_, n_aug_);
+  tools.PredSigmaPts(Xpred, Xsig_aug, delta_t, n_x_, n_aug_);
   
   // Predict mean and covariance
-  //tools.PredMean(x_, Xpred, weights_);
+  tools.PredMean(x_, Xpred, weights_);
+  tools.PredCovariance(P_, x_, Xpred, weights_);
+  std::cout << x_ << "\n\n";
   
 }
 

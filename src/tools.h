@@ -28,18 +28,23 @@ public:
   /**
    * Generate sigma points from the current state vector
    */
-  Eigen::MatrixXd GenSigmaPts(const Eigen::VectorXd& x, const Eigen::VectorXd& P, double std_a, double std_yawdd,
-                              double lambda, int n_x, int n_aug);
+  void GenSigmaPts(Eigen::MatrixXd& Xsig_aug, const Eigen::VectorXd& x, const Eigen::MatrixXd& P, double std_a,
+                             double std_yawdd, double lambda, int n_x, int n_aug);
   
   /**
    * Predict sigma points using f(x,v)
    */
-  Eigen::MatrixXd PredSigmaPts(Eigen::MatrixXd& Xsig_aug, double dt, int n_x, int n_aug);
+  void PredSigmaPts(Eigen::MatrixXd& Xpred, const Eigen::MatrixXd& Xsig_aug, double dt, int n_x, int n_aug);
   
   /*
    * Predict mean state vector x
    */
-  void PredMean(Eigen::VectorXd& x_, Eigen::MatrixXd Xpred, Eigen::VectorXd weights_);
+  void PredMean(Eigen::VectorXd& x, const Eigen::MatrixXd& Xpred, Eigen::VectorXd& w);
+  
+  /*
+   * Predict covariance matrix P
+   */
+  void PredCovariance(Eigen::MatrixXd& P, const Eigen::VectorXd& x, const Eigen::MatrixXd& Xpred, const Eigen::VectorXd& w);
   
 };
 
