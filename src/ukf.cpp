@@ -61,6 +61,11 @@ UKF::UKF() {
   NIS_laser_ = 0.0;
   NIS_radar_ = 0.0;
   
+  // Mean and covariance weights
+  weights_ = VectorXd(2*n_aug_+1);
+  weights_.fill(1/(2*(lambda_ + n_aug_)));
+  weights_(0) = lambda_/(lambda_ + n_aug_);
+  
 }
 
 UKF::~UKF() {}
@@ -107,12 +112,19 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
         x_(1) = 0.1;
       }
     }
+    
+    // initialize P matrix, use large numbers for unknown initial x values
+    P_ << 1, 0,    0,    0,    0,
+          0, 1,    0,    0,    0,
+          0, 0, 1000,    0,    0,
+          0, 0,    0, 1000,    0,
+          0, 0,    0,    0, 1000;
 
     // done initializing, no need to predict or update
     is_initialized_ = true;
   } else {
     // update time information
-    float dt = time_us_-meas_package.timestamp_;
+    double dt = time_us_-meas_package.timestamp_;
     time_us_ = meas_package.timestamp_;
     
     /*TODO*/
@@ -127,12 +139,15 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
  * measurement and this one.
  */
 void UKF::Prediction(double delta_t) {
-  /**
-  TODO:
-
-  Complete this function! Estimate the object's location. Modify the state
-  vector, x_. Predict sigma points, the state, and the state covariance matrix.
-  */
+  // Generate and predict sigma points
+  int n_sig = 2*n_aug_ + 1;
+  MatrixXd Xsig_aug(n_aug_, n_sig);
+  Xsig_aug = tools.GenSigmaPts(x_, P_, std_a_, std_yawdd_, lambda_, n_x_, n_aug_);
+  //MatrixXd Xpred = tools.PredSigmaPts(Xsig_aug, delta_t, n_x_, n_aug_);
+  
+  // Predict mean and covariance
+  //tools.PredMean(x_, Xpred, weights_);
+  
 }
 
 /**
