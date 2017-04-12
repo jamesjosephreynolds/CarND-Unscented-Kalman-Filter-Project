@@ -3,6 +3,10 @@
 #include <vector>
 #include "Eigen/Dense"
 
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+using std::vector;
+
 class Tools {
 public:
   /**
@@ -18,33 +22,44 @@ public:
   /**
   * A helper method to calculate RMSE.
   */
-  Eigen::VectorXd CalculateRMSE(const std::vector<Eigen::VectorXd> &estimations, const std::vector<Eigen::VectorXd> &ground_truth);
+  VectorXd CalculateRMSE(const vector<VectorXd> &estimations, const vector<VectorXd> &ground_truth);
 
   /**
   * A coordinate system transformation.
   */
-  Eigen::VectorXd Polar2Cartesian(const Eigen::VectorXd& radar_meas);
+  VectorXd Polar2Cartesian(const VectorXd& radar_meas);
   
   /**
    * Generate sigma points from the current state vector
    */
-  void GenSigmaPts(Eigen::MatrixXd& Xsig_aug, const Eigen::VectorXd& x, const Eigen::MatrixXd& P, double std_a,
+  void GenSigmaPts(MatrixXd& Xsig_aug, const VectorXd& x, const MatrixXd& P, double std_a,
                              double std_yawdd, double lambda, int n_x, int n_aug);
   
   /**
    * Predict sigma points using f(x,v)
    */
-  void PredSigmaPts(Eigen::MatrixXd& Xpred, const Eigen::MatrixXd& Xsig_aug, double dt, int n_x, int n_aug);
+  void PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, int n_x, int n_aug);
   
   /*
    * Predict mean state vector x
    */
-  void PredMean(Eigen::VectorXd& x, const Eigen::MatrixXd& Xpred, Eigen::VectorXd& w);
+  void PredMean(VectorXd& x, const MatrixXd& Xpred, VectorXd& w);
   
   /*
    * Predict covariance matrix P
    */
-  void PredCovariance(Eigen::MatrixXd& P, const Eigen::VectorXd& x, const Eigen::MatrixXd& Xpred, const Eigen::VectorXd& w);
+  void PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred, const VectorXd& w);
+  
+  /*
+   * Normalize an angle phi between -pi and pi
+   */
+  double NormAngle(double phi);
+  
+  /*
+   * Convert a cartesian matrix into a polar matrix
+   */
+  
+  void Cartesian2Polar(const MatrixXd& X, MatrixXd& Z, const int n);
   
 };
 

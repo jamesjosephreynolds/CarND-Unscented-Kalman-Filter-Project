@@ -30,7 +30,7 @@ public:
   MatrixXd P_;
 
   ///* predicted sigma points matrix
-  MatrixXd Xsig_pred_;
+  MatrixXd Xpred_;
 
   ///* time when the state is true, in us
   long long time_us_;
@@ -61,9 +61,15 @@ public:
 
   ///* State dimension
   int n_x_;
+  
+  // Measurement dimension for radar
+  int n_radz_;
 
   ///* Augmented state dimension
   int n_aug_;
+  
+  // Number of sigma points
+  int n_sig_;
 
   ///* Sigma point spreading parameter
   double lambda_;

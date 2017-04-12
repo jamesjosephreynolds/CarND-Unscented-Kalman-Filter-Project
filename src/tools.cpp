@@ -78,6 +78,7 @@ void Tools::GenSigmaPts(MatrixXd& Xsig_aug, const VectorXd& x, const MatrixXd& P
   x_aug.head(n_x) = x;
   
   //create augmented covariance matrix
+  P_aug.fill(0.0);
   P_aug.topLeftCorner(n_x,n_x) = P;
   P_aug(n_aug-2,n_aug-2) = std_a*std_a;
   P_aug(n_aug-1,n_aug-1) = std_yawdd*std_yawdd;
@@ -91,6 +92,7 @@ void Tools::GenSigmaPts(MatrixXd& Xsig_aug, const VectorXd& x, const MatrixXd& P
     } else {
       Xsig_aug.col(idx) = x_aug-sqrt(lambda+n_aug)*A.col(idx-(n_x+1));
     }
+    Xsig_aug(3,idx) = NormAngle(Xsig_aug(3,idx));
   }
 }
 
@@ -99,7 +101,6 @@ void Tools::PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, i
    * Use nonlinear f(x,v) to update sigma points
    */
   //From lesson 21
-  MatrixXd Xsig = MatrixXd(n_x, 2 * n_aug + 1);
   
   for (int i = 0; i < (2*n_aug+1); ++i){
     // input values
@@ -127,6 +128,7 @@ void Tools::PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, i
     
     v_p    = v; // constant longitudinal velocity
     yaw_p  = yaw + yawd*dt; // integrate rate of change
+    yaw_p = NormAngle(yaw_p);
     yawd_p = yawd; // constant rate of change of direction
     
     // noise effect
@@ -134,6 +136,7 @@ void Tools::PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, i
     py_p   += 0.5*nu_a*dt*dt*sin(yaw);
     v_p    += nu_a*dt;
     yaw_p  += 0.5*nu_yawdd*dt*dt;
+    yaw_p = NormAngle(yaw_p);
     yawd_p += nu_yawdd*dt;
     
     // place temp variables back into matrix
@@ -160,17 +163,61 @@ void Tools::PredMean(VectorXd& x, const MatrixXd& Xpred, VectorXd& w) {
 
 void Tools::PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred, const VectorXd& w) {
   int n_sig = Xpred.cols();
-  
+  VectorXd col;
   // clear previous value in P
   P.fill(0.0);
   
   // accumulate covariance
-  for (int i = 0; i < n_sig; ++i){
-    VectorXd col = Xpred.col(i)-x;
+  for (int i = 1; i < n_sig; ++i){
+    col = Xpred.col(i)-x;
     //normalize angular differences between -pi and pi
-    while (col(3)> M_PI) col(3)-=2.*M_PI;
-    while (col(3)<-M_PI) col(3)+=2.*M_PI;
+    col(3) = NormAngle(col(3));
     P += w(i)*col*col.transpose();
   }
 
 }
+
+double Tools::NormAngle(double phi) {
+  // normalize phi between -pi and pi
+  if ((phi >= -M_PI)&&(phi <= M_PI)){
+    // already in range
+    return phi;
+  }
+  else if (phi < 0) {
+    // phi too negative
+    double tmp;
+    tmp = phi - M_PI;
+    tmp = -remainder(-tmp,(2*M_PI))+M_PI;
+    std::cout<<"phi raw = "<<phi<<"\n";
+    std::cout<<"phi = "<<phi/M_PI<<"\ntmp = "<<tmp/M_PI<<"\n\n";
+    return tmp;
+  }
+      //TODO
+  else {
+    // phi too positive
+    double tmp;
+    tmp = phi + M_PI;
+    tmp = remainder(tmp,(2*M_PI));
+    tmp -= M_PI;
+    std::cout<<"phi raw = "<<phi<<"\n";
+    std::cout<<"phi = "<<phi/M_PI<<"\ntmp = "<<tmp/M_PI<<"\n\n";
+    return tmp;
+  }
+}
+
+void Tools::Cartesian2Polar(const MatrixXd& X, MatrixXd& Z, const int n) {
+  // From lesson 26
+  for (int i = 0; i < n; ++i) {
+    float rho, phi;
+    rho = sqrt(X(0,i)*X(0,i)+X(1,i)*X(1,i));
+    phi = atan2(X(1,i), X(0,i));
+    
+    float vx, vy;
+    vx = cos(X(3,i))*X(2,i);
+    vy = sin(X(3,i))*X(2,i);
+    
+    float rho_dot = (X(0,i)*vx + X(1,i)*vy)/rho;
+    Z.col(i) << rho, phi, rho_dot;
+  }
+}
+

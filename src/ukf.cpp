@@ -27,6 +27,7 @@ UKF::UKF() {
   // initial covariance matrix
   P_ = MatrixXd(5, 5);
 
+
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 0.0;//3; //std_a_ = 30;
 
@@ -51,8 +52,18 @@ UKF::UKF() {
   // Dimensionality of the state vector: x, y, v, phi, phi_dot
   n_x_ = 5;
   
+  // Dimensionality of the measurement vector for radar: rho, v, phi
+  n_radz_ = 3;
+  
   // Dimensionality of the augmented state: x, y, v, phi, phi_dot, v_dot, phi_dot_dot
   n_aug_ = 7;
+  
+  // Number of sigma points
+  n_sig_ = 2*n_aug_+1;
+  
+  
+  // predicted sigma points
+  Xpred_ = MatrixXd(n_x_, n_sig_);
   
   // Lambda parameter for predicting sigma points
   lambda_ = 3.0 - double(n_aug_);
@@ -130,6 +141,12 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     /*TODO*/
     Prediction(dt);
     
+    // Radar updates
+    if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      UpdateRadar(meas_package);
+    }
+    
+    
   }
   
 }
@@ -141,9 +158,10 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
  */
 void UKF::Prediction(double delta_t) {
   // Generate and predict sigma points
-  int n_sig = 2*n_aug_+1;
-  MatrixXd Xsig_aug(n_aug_, n_sig);
-  MatrixXd Xpred(n_x_, n_sig);
+  MatrixXd Xsig_aug(n_aug_, n_sig_);
+  MatrixXd Xpred(n_x_, n_sig_);
+  Xsig_aug.fill(0.0);
+  Xpred.fill(0.0);
   
   tools.GenSigmaPts(Xsig_aug, x_, P_, std_a_, std_yawdd_, lambda_, n_x_, n_aug_);
   tools.PredSigmaPts(Xpred, Xsig_aug, delta_t, n_x_, n_aug_);
@@ -151,7 +169,6 @@ void UKF::Prediction(double delta_t) {
   // Predict mean and covariance
   tools.PredMean(x_, Xpred, weights_);
   tools.PredCovariance(P_, x_, Xpred, weights_);
-  std::cout << x_ << "\n\n";
   
 }
 
@@ -175,12 +192,37 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
-  /**
-  TODO:
-
-  Complete this function! Use radar data to update the belief about the object's
-  position. Modify the state vector, x_, and covariance, P_.
-
-  You'll also need to calculate the radar NIS.
-  */
+  MatrixXd Zpred(n_radz_, n_sig_);
+  MatrixXd S(n_radz_, n_radz_);
+  MatrixXd R(n_radz_, n_radz_);
+  VectorXd z(n_radz_);
+  z = meas_package.raw_measurements_;
+  
+  S.fill(0.0);
+  R << std_radr_*std_radr_, 0 ,0,
+       0, std_radphi_*std_radphi_, 0,
+       0, 0, std_radrd_*std_radrd_;
+  
+  
+  tools.Cartesian2Polar(Xpred_, Zpred, n_sig_);
+  
+  VectorXd z_pred(n_radz_);
+  tools.PredMean(z_pred, Zpred, weights_);
+  tools.PredCovariance(S, z_pred, Zpred, weights_);
+  S += R;
+  
+  // From lesson 29
+  MatrixXd Tc = MatrixXd(n_x_, n_radz_);
+  for (int i = 0; i < n_sig_; ++i){
+    VectorXd col = Xpred_.col(i)-x_;
+    VectorXd row = Zpred.col(i)-z_pred;
+    Tc = Tc + weights_(i)*col*row.transpose();
+  }
+  
+  //calculate Kalman gain K;
+  MatrixXd K(n_x_,n_radz_);
+  K = Tc*S.inverse();
+  //update state mean and covariance matrix
+  x_ += K*(z-z_pred);
+  P_ -= K*S*K.transpose();
 }
