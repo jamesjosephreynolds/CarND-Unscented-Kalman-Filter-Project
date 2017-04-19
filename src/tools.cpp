@@ -83,10 +83,10 @@ void Tools::GenSigmaPts(MatrixXd& Xsig_aug, const VectorXd& x, const MatrixXd& P
   P_aug(n_aug-2,n_aug-2) = std_a*std_a;
   P_aug(n_aug-1,n_aug-1) = std_yawdd*std_yawdd;
   
-  std::cout << "P_aug matrix: " << P_aug << "\n\n";
+  //std::cout << "P_aug matrix: " << P_aug << "\n\n";
   
   MatrixXd A = P_aug.llt().matrixL();
-  std::cout << "Matrix A (P^-1):\n" << A << "\n\n";
+  //std::cout << "Matrix A (P^-1):\n" << A << "\n\n";
   
   Xsig_aug.col(0) = x_aug;
   for (int idx = 1; idx <= n_aug; ++idx){

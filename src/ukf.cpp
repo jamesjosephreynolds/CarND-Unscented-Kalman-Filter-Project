@@ -36,7 +36,7 @@ UKF::UKF() {
   std_a_ = 3;//3; //std_a_ = 30;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.3; //std_yawdd_ = 30;
+  std_yawdd_ = 0.5; //std_yawdd_ = 30;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -78,6 +78,8 @@ UKF::UKF() {
   // Consistency measures
   NIS_laser_ = 0.0;
   NIS_radar_ = 0.0;
+  NIS_mean_ = 0.0;
+  n_NIS_ = 0;
   
   // Mean and covariance weights
   weights_ = VectorXd(2*n_aug_+1);
@@ -154,9 +156,9 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     
         // predict and update
         Prediction(dt);
-        std::cout << "Predicted x vector: \n" << x_ << "\n\n";
-        std::cout << "Radar measurement \n" << meas_package.raw_measurements_<< "\n\n";
-        std::cout << "Radar update x vector: \n" << x_ << "\n\n";
+        //std::cout << "Predicted x vector: \n" << x_ << "\n\n";
+        //std::cout << "Radar measurement \n" << meas_package.raw_measurements_<< "\n\n";
+        //std::cout << "Radar update x vector: \n" << x_ << "\n\n";
         UpdateRadar(meas_package);
       }
     } else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
@@ -167,9 +169,9 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
         
         // predict and update
         Prediction(dt);
-        std::cout << "Predicted x vector: \n" << x_ << "\n\n";
-        std::cout << "Lidar measurement: \n" << meas_package.raw_measurements_<< "\n\n";
-        std::cout << "Lidar update x vector: \n" << x_ << "\n\n";
+        //std::cout << "Predicted x vector: \n" << x_ << "\n\n";
+        //std::cout << "Lidar measurement: \n" << meas_package.raw_measurements_<< "\n\n";
+        //std::cout << "Lidar update x vector: \n" << x_ << "\n\n";
         UpdateLidar(meas_package);
       }
     }
@@ -192,15 +194,15 @@ void UKF::Prediction(double delta_t) {
   Xpred_.fill(0.0);
   
   tools.GenSigmaPts(Xsig_aug, x_, P_, std_a_, std_yawdd_, lambda_, n_x_, n_aug_);
-  std::cout << "Sigma points: \n" << Xsig_aug << "\n\n";
+  //std::cout << "Sigma points: \n" << Xsig_aug << "\n\n";
   tools.PredSigmaPts(Xpred_, Xsig_aug, delta_t, n_x_, n_aug_);
-  std::cout << "Predict sigma points: \n" << Xpred_ << "\n\n";
+  //std::cout << "Predict sigma points: \n" << Xpred_ << "\n\n";
   
   // Predict mean and covariance
   tools.PredMean(x_, Xpred_, weights_);
-  std::cout << "Predicted x mean: \n" << x_ << "\n\n";
+  //std::cout << "Predicted x mean: \n" << x_ << "\n\n";
   tools.PredCovariance(P_, x_, Xpred_, weights_, CTRVPHIIDX);
-  std::cout << "Predicted P mean: \n" << P_ << "\n\n";
+  //std::cout << "Predicted P mean: \n" << P_ << "\n\n";
   
 }
 
@@ -315,5 +317,21 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   //update state mean and covariance matrix
   x_ += K*(z-z_pred);
   P_ -= K*S*K.transpose();
-  std::cout << "Updated P mean: \n" << P_ << "\n\n";
+  //std::cout << "Updated P mean: \n" << P_ << "\n\n";
+  
+  //calculate NIS
+  MatrixXd zkp1(n_radz_, 1); //z at time k + 1
+  tools.Cartesian2Polar(x_, zkp1, 1);
+  VectorXd delta(n_radz_);
+  z = zkp1.col(0);
+  delta = z - z_pred;
+  NIS_radar_ = delta.transpose()*S.inverse()*delta;
+  n_NIS_ += 1;
+  if (n_NIS_ > 1) {
+    NIS_mean_ = (NIS_radar_ + (n_NIS_ - 1)*NIS_mean_)/n_NIS_;
+  } else {
+    NIS_mean_ = NIS_radar_;
+  }
+  std::cout << "NIS: " << NIS_radar_ << ", mean: " << NIS_mean_ << "\n\n";
+  
 }
