@@ -64,6 +64,9 @@ public:
   
   // Measurement dimension for radar
   int n_radz_;
+  
+  // Measurement dimension for lidar
+  int n_lidz_;
 
   ///* Augmented state dimension
   int n_aug_;

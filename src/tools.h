@@ -48,7 +48,7 @@ public:
   /*
    * Predict covariance matrix P
    */
-  void PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred, const VectorXd& w);
+  void PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred, const VectorXd& w, const int angleIdx);
   
   /*
    * Normalize an angle phi between -pi and pi

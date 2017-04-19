@@ -83,15 +83,15 @@ void Tools::GenSigmaPts(MatrixXd& Xsig_aug, const VectorXd& x, const MatrixXd& P
   P_aug(n_aug-2,n_aug-2) = std_a*std_a;
   P_aug(n_aug-1,n_aug-1) = std_yawdd*std_yawdd;
   
+  std::cout << "P_aug matrix: " << P_aug << "\n\n";
+  
   MatrixXd A = P_aug.llt().matrixL();
+  std::cout << "Matrix A (P^-1):\n" << A << "\n\n";
   
   Xsig_aug.col(0) = x_aug;
-  for (int idx = 1; idx <= (2*n_x); ++idx){
-    if (idx <= n_x){
+  for (int idx = 1; idx <= n_aug; ++idx){
       Xsig_aug.col(idx) = x_aug+sqrt(lambda+n_aug)*A.col(idx-1);
-    } else {
-      Xsig_aug.col(idx) = x_aug-sqrt(lambda+n_aug)*A.col(idx-(n_x+1));
-    }
+      Xsig_aug.col(idx+n_aug) = x_aug-sqrt(lambda+n_aug)*A.col(idx-1);
     Xsig_aug(3,idx) = NormAngle(Xsig_aug(3,idx));
   }
 }
@@ -157,11 +157,11 @@ void Tools::PredMean(VectorXd& x, const MatrixXd& Xpred, VectorXd& w) {
   
   // accumulate mean
   for (int i = 0; i < n_sig; ++i) {
-    x += w(i)*Xpred.col(i); //weighted column i
+    x = x+ w(i)*Xpred.col(i); //weighted column i
   }
 }
 
-void Tools::PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred, const VectorXd& w) {
+void Tools::PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred, const VectorXd& w, const int angleIdx) {
   int n_sig = Xpred.cols();
   VectorXd col;
   // clear previous value in P
@@ -170,8 +170,15 @@ void Tools::PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred
   // accumulate covariance
   for (int i = 1; i < n_sig; ++i){
     col = Xpred.col(i)-x;
+    //std::cout << "col pre - " << i << ":\n" << col << "\n\n";
     //normalize angular differences between -pi and pi
-    col(3) = NormAngle(col(3));
+    if (angleIdx >= 0) {
+        col(angleIdx) = NormAngle(col(angleIdx));
+    }
+    //std::cout << "col post - " << i << ":\n" << col << "\n\n";
+    MatrixXd tmp(5,5);
+    tmp = w(i)*col*col.transpose();
+    //std::cout << "tmp matrix - " << i << ":\n" << tmp << "\n\n";
     P += w(i)*col*col.transpose();
   }
 
@@ -188,8 +195,8 @@ double Tools::NormAngle(double phi) {
     double tmp;
     tmp = phi - M_PI;
     tmp = -remainder(-tmp,(2*M_PI))+M_PI;
-    std::cout<<"phi raw = "<<phi<<"\n";
-    std::cout<<"phi = "<<phi/M_PI<<"\ntmp = "<<tmp/M_PI<<"\n\n";
+    //std::cout<<"phi raw = "<<phi<<"\n";
+    //std::cout<<"phi = "<<phi/M_PI<<"\ntmp = "<<tmp/M_PI<<"\n\n";
     return tmp;
   }
       //TODO
@@ -199,8 +206,8 @@ double Tools::NormAngle(double phi) {
     tmp = phi + M_PI;
     tmp = remainder(tmp,(2*M_PI));
     tmp -= M_PI;
-    std::cout<<"phi raw = "<<phi<<"\n";
-    std::cout<<"phi = "<<phi/M_PI<<"\ntmp = "<<tmp/M_PI<<"\n\n";
+    //std::cout<<"phi raw = "<<phi<<"\n";
+    //std::cout<<"phi = "<<phi/M_PI<<"\ntmp = "<<tmp/M_PI<<"\n\n";
     return tmp;
   }
 }
