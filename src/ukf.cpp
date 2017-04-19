@@ -110,6 +110,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     // initialize time
     time_us_ = meas_package.timestamp_;
     
+    x_.fill(0.0);
+    
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       /*TODO*/
       // check for rho not too near 0.0
