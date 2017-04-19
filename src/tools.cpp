@@ -89,10 +89,10 @@ void Tools::GenSigmaPts(MatrixXd& Xsig_aug, const VectorXd& x, const MatrixXd& P
   //std::cout << "Matrix A (P^-1):\n" << A << "\n\n";
   
   Xsig_aug.col(0) = x_aug;
-  for (int idx = 1; idx <= n_aug; ++idx){
-      Xsig_aug.col(idx) = x_aug+sqrt(lambda+n_aug)*A.col(idx-1);
-      Xsig_aug.col(idx+n_aug) = x_aug-sqrt(lambda+n_aug)*A.col(idx-1);
-    Xsig_aug(3,idx) = NormAngle(Xsig_aug(3,idx));
+  for (int idx = 0; idx < n_aug; ++idx){
+      Xsig_aug.col(idx+1) = x_aug+sqrt(lambda+n_aug)*A.col(idx);
+      Xsig_aug.col(idx+1+n_aug) = x_aug-sqrt(lambda+n_aug)*A.col(idx);
+    //Xsig_aug(3,idx) = NormAngle(Xsig_aug(3,idx));
   }
 }
 
@@ -123,12 +123,12 @@ void Tools::PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, i
     } else {
       // turning, use calculus
       px_p = px + v/yawd * (sin(yaw+yawd*dt)-sin(yaw));
-      py_p = py + v/yawd * (cos(yaw+yawd*dt)-cos(yaw));
+      py_p = py + v/yawd * (-cos(yaw+yawd*dt)+cos(yaw));
     }
     
     v_p    = v; // constant longitudinal velocity
     yaw_p  = yaw + yawd*dt; // integrate rate of change
-    yaw_p = NormAngle(yaw_p);
+    //yaw_p = NormAngle(yaw_p);
     yawd_p = yawd; // constant rate of change of direction
     
     // noise effect
@@ -136,7 +136,7 @@ void Tools::PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, i
     py_p   += 0.5*nu_a*dt*dt*sin(yaw);
     v_p    += nu_a*dt;
     yaw_p  += 0.5*nu_yawdd*dt*dt;
-    yaw_p = NormAngle(yaw_p);
+    //yaw_p = NormAngle(yaw_p);
     yawd_p += nu_yawdd*dt;
     
     // place temp variables back into matrix
@@ -168,18 +168,20 @@ void Tools::PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred
   P.fill(0.0);
   
   // accumulate covariance
-  for (int i = 1; i < n_sig; ++i){
+  for (int i = 0; i < n_sig; ++i){
     col = Xpred.col(i)-x;
     //std::cout << "col pre - " << i << ":\n" << col << "\n\n";
     //normalize angular differences between -pi and pi
-    if (angleIdx >= 0) {
-        col(angleIdx) = NormAngle(col(angleIdx));
-    }
+    while (col(angleIdx)> M_PI) col(angleIdx)-=2.*M_PI;
+    while (col(angleIdx)< -M_PI) col(angleIdx)+=2.*M_PI;
+    //if (angleIdx >= 0) {
+    //    col(angleIdx) = NormAngle(col(angleIdx));
+    //}
     //std::cout << "col post - " << i << ":\n" << col << "\n\n";
     MatrixXd tmp(5,5);
     tmp = w(i)*col*col.transpose();
     //std::cout << "tmp matrix - " << i << ":\n" << tmp << "\n\n";
-    P += w(i)*col*col.transpose();
+    P = P + w(i)*col*col.transpose();
   }
 
 }
@@ -217,6 +219,7 @@ void Tools::Cartesian2Polar(const MatrixXd& X, MatrixXd& Z, const int n) {
   for (int i = 0; i < n; ++i) {
     float rho, phi;
     rho = sqrt(X(0,i)*X(0,i)+X(1,i)*X(1,i));
+    if (rho < 0.001) rho = 0.001;
     phi = atan2(X(1,i), X(0,i));
     
     float vx, vy;

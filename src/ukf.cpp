@@ -33,7 +33,7 @@ UKF::UKF() {
 
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 3;//3; //std_a_ = 30;
+  std_a_ = 0.3;//3; //std_a_ = 30;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
   std_yawdd_ = 0.5; //std_yawdd_ = 30;
@@ -285,7 +285,9 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   MatrixXd R(n_radz_, n_radz_);
   VectorXd z(n_radz_);
   Zpred.fill(0.0);
-  z = meas_package.raw_measurements_;
+  z << meas_package.raw_measurements_(0),
+       meas_package.raw_measurements_(1),
+       meas_package.raw_measurements_(2);
   
   S.fill(0.0);
   R << std_radr_*std_radr_, 0 ,0,
@@ -305,9 +307,13 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   Tc.fill(0.0);
   for (int i = 0; i < n_sig_; ++i){
     VectorXd col = Xpred_.col(i)-x_;
-    col(CTRVPHIIDX) = tools.NormAngle(col(CTRVPHIIDX));
+    //col(CTRVPHIIDX) = tools.NormAngle(col(CTRVPHIIDX));
+    while (col(CTRVPHIIDX)> M_PI) col(CTRVPHIIDX)-=2.*M_PI;
+    while (col(CTRVPHIIDX)<-M_PI) col(CTRVPHIIDX)+=2.*M_PI;
     VectorXd row = Zpred.col(i)-z_pred;
-    row(RADPHIIDX) = tools.NormAngle(row(RADPHIIDX));
+    while (row(RADPHIIDX)> M_PI) row(RADPHIIDX)-=2.*M_PI;
+    while (row(RADPHIIDX)<-M_PI) row(RADPHIIDX)+=2.*M_PI;
+    //row(RADPHIIDX) = tools.NormAngle(row(RADPHIIDX));
     Tc = Tc + weights_(i)*col*row.transpose();
   }
   
@@ -315,6 +321,10 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   MatrixXd K(n_x_,n_radz_);
   K = Tc*S.inverse();
   //update state mean and covariance matrix
+  VectorXd z_diff = z-z_pred;
+  //z_diff(RADPHIIDX) = tools.NormAngle(z_diff(RADPHIIDX));
+  while (z_diff(RADPHIIDX)> M_PI) z_diff(RADPHIIDX)-=2.*M_PI;
+  while (z_diff(RADPHIIDX)<-M_PI) z_diff(RADPHIIDX)+=2.*M_PI;
   x_ += K*(z-z_pred);
   P_ -= K*S*K.transpose();
   //std::cout << "Updated P mean: \n" << P_ << "\n\n";
