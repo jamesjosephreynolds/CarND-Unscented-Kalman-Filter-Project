@@ -122,8 +122,8 @@ void Tools::PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, i
       py_p = py + v*dt*sin(yaw);
     } else {
       // turning, use calculus
-      px_p = px + v/yawd * (sin(yaw+yawd*dt)-sin(yaw));
-      py_p = py + v/yawd * (-cos(yaw+yawd*dt)+cos(yaw));
+      px_p = px + v/yawd * (sin(yaw+yawd*dt) - sin(yaw));
+      py_p = py + v/yawd * (cos(yaw) - cos(yaw+yawd*dt));
     }
     
     v_p    = v; // constant longitudinal velocity
