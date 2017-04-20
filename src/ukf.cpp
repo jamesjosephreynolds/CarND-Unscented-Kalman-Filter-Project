@@ -107,27 +107,24 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   if (!is_initialized_){
     std::cout<<"Initialize\n";
     
-    // initialize time
+    // initialize time and CTRV state
     time_us_ = meas_package.timestamp_;
-    
     x_.fill(0.0);
     
+    // populate CTRV state initial value with measurement data
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
-      /*TODO*/
       // check for rho not too near 0.0
       if (meas_package.raw_measurements_(0) > 0.001){
-        std::cout << "Init measurement radar\n\n";
         x_ = tools.Polar2Cartesian(meas_package.raw_measurements_);
       } else {
       // default values if first measurement is close to rho = 0.0
-        std::cout << "Init measurement lidar\n\n";
         x_(0) = 0.1;
         x_(1) = 0.1;
       }
     }
     else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
       // check for (x,y) not too near (0.0, 0.0)
-      if ((meas_package.raw_measurements_(0) > 0.001) && (meas_package.raw_measurements_(1) > 0.001)){
+      if ((meas_package.raw_measurements_(0) > 0.001) && (meas_package.raw_measurements_(1) > 0.001)) {
         x_(0) = meas_package.raw_measurements_(0);
         x_(1) = meas_package.raw_measurements_(1);
       } else {
@@ -137,43 +134,32 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       }
     }
     
-    // initialize P matrix, use large numbers for unknown initial x values
-    P_ << 1, 0,    0,    0,    0,
-          0, 1,    0,    0,    0,
-          0, 0, 1,    0,    0,
-          0, 0,    0, 1,    0,
-          0, 0,    0,    0, 1;
+    // initialize P matrix, use identity
+    P_ = MatrixXd::Identity(n_x_, n_x_);
 
     // done initializing, no need to predict or update
     is_initialized_ = true;
     
-    std::cout << "Init x vector: \n" << x_ << "\n\n";
-    
   } else {
+    
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       if (use_radar_) {
-        // update time information
+        // update time information only if radar is enabled
         double dt = 0.000001*(meas_package.timestamp_-time_us_);
         time_us_ = meas_package.timestamp_;
     
         // predict and update
         Prediction(dt);
-        //std::cout << "Predicted x vector: \n" << x_ << "\n\n";
-        //std::cout << "Radar measurement \n" << meas_package.raw_measurements_<< "\n\n";
-        //std::cout << "Radar update x vector: \n" << x_ << "\n\n";
         UpdateRadar(meas_package);
       }
     } else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
       if (use_laser_) {
-        // update time information
+        // update time information only if lidar is enabled
         double dt = 0.000001*(meas_package.timestamp_-time_us_);
         time_us_ = meas_package.timestamp_;
         
         // predict and update
         Prediction(dt);
-        //std::cout << "Predicted x vector: \n" << x_ << "\n\n";
-        //std::cout << "Lidar measurement: \n" << meas_package.raw_measurements_<< "\n\n";
-        //std::cout << "Lidar update x vector: \n" << x_ << "\n\n";
         UpdateLidar(meas_package);
       }
     }
@@ -189,22 +175,20 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
  * measurement and this one.
  */
 void UKF::Prediction(double delta_t) {
-  // Generate and predict sigma points
+  
   MatrixXd Xsig_aug(n_aug_, n_sig_);
-  //MatrixXd Xpred(n_x_, n_sig_);
+  
+  // Clear previous sigma points and prediction
   Xsig_aug.fill(0.0);
   Xpred_.fill(0.0);
   
+  // Generate and predict sigma points
   tools.GenSigmaPts(Xsig_aug, x_, P_, std_a_, std_yawdd_, lambda_, n_x_, n_aug_);
-  //std::cout << "Sigma points: \n" << Xsig_aug << "\n\n";
   tools.PredSigmaPts(Xpred_, Xsig_aug, delta_t, n_x_, n_aug_);
-  //std::cout << "Predict sigma points: \n" << Xpred_ << "\n\n";
   
   // Predict mean and covariance
   tools.PredMean(x_, Xpred_, weights_);
-  //std::cout << "Predicted x mean: \n" << x_ << "\n\n";
   tools.PredCovariance(P_, x_, Xpred_, weights_, CTRVPHIIDX);
-  //std::cout << "Predicted P mean: \n" << P_ << "\n\n";
   
 }
 
@@ -214,67 +198,36 @@ void UKF::Prediction(double delta_t) {
  */
 void UKF::UpdateLidar(MeasurementPackage meas_package) {
   
+  // Use implementation from EKF (linear function)
   MatrixXd H(n_lidz_, n_x_);
   MatrixXd R(n_lidz_, n_lidz_);
   VectorXd z(n_lidz_);
+  MatrixXd I = MatrixXd::Identity(n_x_, n_x_);
   
+  // Linear x -> z transformation matrix
   H << 1, 0, 0, 0, 0,
        0, 1, 0, 0, 0;
   
+  // Measurement noise covariance matrix
   R << std_laspx_*std_laspx_, 0,
        0, std_laspy_*std_laspy_;
   
+  // Get measurement data
   z << meas_package.raw_measurements_(0), meas_package.raw_measurements_(1);
   
+  // Measurement prediction
   VectorXd z_pred = H * x_;
+  
+  // Prediction error
   VectorXd y = z - z_pred;
-  MatrixXd Ht = H.transpose();
-  MatrixXd S = H * P_ * Ht + R;
-  MatrixXd K = P_ * Ht * S.inverse();
   
-  //new estimate
+  // Update state vector andc covariance matrix
+  MatrixXd PHt = P_ * H.transpose();
+  MatrixXd S = H * PHt + R;
+  MatrixXd K = PHt * S.inverse();
   x_ = x_ + (K * y);
-  long x_size = x_.size();
-  MatrixXd I = MatrixXd::Identity(x_size, x_size);
   P_ = (I - K * H) * P_;
-  
-  /*MatrixXd Zpred(n_lidz_, n_sig_);
-  MatrixXd S(n_lidz_, n_lidz_);
-  MatrixXd R(n_lidz_, n_lidz_);
-  VectorXd z(n_lidz_);
-  z = meas_package.raw_measurements_;
-  
-  S.fill(0.0);
-  R << std_laspx_*std_laspx_, 0,
-       0, std_laspy_*std_laspy_;
-  
-  
-  Zpred = Xpred_.block(0, 0, n_lidz_, n_sig_);
-  //std::cout << Xpred_ << "\n\n";
-  //std::cout << Zpred << "\n\n";
-  
-  VectorXd z_pred(n_lidz_);
-  tools.PredMean(z_pred, Zpred, weights_);
-  tools.PredCovariance(S, z_pred, Zpred, weights_, LIDPHIIDX);
-  S += R;
-  
-  // From lesson 29
-  MatrixXd Tc = MatrixXd(n_x_, n_lidz_);
-  for (int i = 0; i < n_sig_; ++i){
-    VectorXd col = Xpred_.col(i)-x_;
-    VectorXd row = Zpred.col(i)-z_pred;
-    Tc = Tc + weights_(i)*col*row.transpose();
-  }
-  
-  //calculate Kalman gain K;
-  MatrixXd K(n_x_,n_lidz_);
-  K = Tc*S.inverse();
-  //update state mean and covariance matrix
-  x_ += K*(z-z_pred);
-  P_ -= K*S*K.transpose();
-  std::cout << "Updated P mean: \n" << P_ << "\n\n";
-   */
-  
+    
 }
 
 /**
@@ -286,59 +239,77 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   MatrixXd S(n_radz_, n_radz_);
   MatrixXd R(n_radz_, n_radz_);
   VectorXd z(n_radz_);
+  VectorXd z_pred(n_radz_);
+  MatrixXd Tc = MatrixXd(n_x_, n_radz_);
+  VectorXd x_err(n_x_);
+  VectorXd z_err(n_radz_);
+  MatrixXd K(n_x_,n_radz_);
+  Tc.fill(0.0);
   Zpred.fill(0.0);
+  S.fill(0.0);
+  
+  // Get measurement data
   z << meas_package.raw_measurements_(0),
        meas_package.raw_measurements_(1),
        meas_package.raw_measurements_(2);
   
-  S.fill(0.0);
+  // Measurement noise covariance matrix
   R << std_radr_*std_radr_, 0 ,0,
        0, std_radphi_*std_radphi_, 0,
        0, 0, std_radrd_*std_radrd_;
   
-  
+  // Transform predicted sigma points into measurement space Xpred -> Zpred
   tools.Cartesian2Polar(Xpred_, Zpred, n_sig_);
   
-  VectorXd z_pred(n_radz_);
+  // Predict mean and covariance
   tools.PredMean(z_pred, Zpred, weights_);
   tools.PredCovariance(S, z_pred, Zpred, weights_, RADPHIIDX);
   S += R;
   
   // From lesson 29
-  MatrixXd Tc = MatrixXd(n_x_, n_radz_);
-  Tc.fill(0.0);
-  for (int i = 0; i < n_sig_; ++i){
-    VectorXd col = Xpred_.col(i)-x_;
-    //col(CTRVPHIIDX) = tools.NormAngle(col(CTRVPHIIDX));
-    while (col(CTRVPHIIDX)> M_PI) col(CTRVPHIIDX)-=2.*M_PI;
-    while (col(CTRVPHIIDX)<-M_PI) col(CTRVPHIIDX)+=2.*M_PI;
-    VectorXd row = Zpred.col(i)-z_pred;
-    while (row(RADPHIIDX)> M_PI) row(RADPHIIDX)-=2.*M_PI;
-    while (row(RADPHIIDX)<-M_PI) row(RADPHIIDX)+=2.*M_PI;
-    //row(RADPHIIDX) = tools.NormAngle(row(RADPHIIDX));
-    Tc = Tc + weights_(i)*col*row.transpose();
+  for (int i = 0; i < n_sig_; ++i) {
+    // distance between predicted sigma point and mean
+    x_err = Xpred_.col(i)-x_;
+    z_err = Zpred.col(i)-z_pred;
+    
+    //angle normalization (-pi, pi) in x and z domains
+    while (x_err(CTRVPHIIDX)> M_PI) x_err(CTRVPHIIDX) -= 2.*M_PI;
+    while (x_err(CTRVPHIIDX)<-M_PI) x_err(CTRVPHIIDX) += 2.*M_PI;
+    while (z_err(RADPHIIDX)> M_PI) z_err(RADPHIIDX) -= 2.*M_PI;
+    while (z_err(RADPHIIDX)<-M_PI) z_err(RADPHIIDX) += 2.*M_PI;
+    
+    Tc = Tc + weights_(i)*x_err*z_err.transpose();
   }
   
   //calculate Kalman gain K;
-  MatrixXd K(n_x_,n_radz_);
   K = Tc*S.inverse();
-  //update state mean and covariance matrix
-  VectorXd z_diff = z-z_pred;
-  //z_diff(RADPHIIDX) = tools.NormAngle(z_diff(RADPHIIDX));
-  while (z_diff(RADPHIIDX)> M_PI) z_diff(RADPHIIDX)-=2.*M_PI;
-  while (z_diff(RADPHIIDX)<-M_PI) z_diff(RADPHIIDX)+=2.*M_PI;
+  
+  // Update state mean and covariance matrix (reuse z_err)
+  z_err = z-z_pred;
+  
+  //angle normalization (-pi, pi) in z domain
+  while (z_err(RADPHIIDX)> M_PI) z_err(RADPHIIDX)-=2.*M_PI;
+  while (z_err(RADPHIIDX)<-M_PI) z_err(RADPHIIDX)+=2.*M_PI;
+  
   x_ += K*(z-z_pred);
   P_ -= K*S*K.transpose();
-  //std::cout << "Updated P mean: \n" << P_ << "\n\n";
   
-  //calculate NIS
+  // Calculate NIS
   MatrixXd zkp1(n_radz_, 1); //z at time k + 1
+  
+  // Helper function requires MatrixXd, but zpk1 is really just a column
+  // Convert updated state vector x into measurement domain x -> z
   tools.Cartesian2Polar(x_, zkp1, 1);
-  VectorXd delta(n_radz_);
+  
+  // Switch back to VectorXd variable
   z = zkp1.col(0);
-  delta = z - z_pred;
-  NIS_radar_ = delta.transpose()*S.inverse()*delta;
-  n_NIS_ += 1;
+  z_err = z - z_pred;
+  
+  // Current NIS value
+  NIS_radar_ = z_err.transpose()*S.inverse()*z_err;
+  n_NIS_ += 1; // number of NIS samples
+  
+  // Average NIS value
   if (n_NIS_ > 1) {
     NIS_mean_ = (NIS_radar_ + (n_NIS_ - 1)*NIS_mean_)/n_NIS_;
   } else {
