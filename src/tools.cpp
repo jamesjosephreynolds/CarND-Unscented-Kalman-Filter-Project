@@ -148,81 +148,51 @@ void Tools::PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, i
 void Tools::PredMean(VectorXd& x, const MatrixXd& Xpred, VectorXd& w) {
   int n_sig = Xpred.cols();
   
-  // clear previous value in x
+  // Clear previous value in x
   x.fill(0.0);
   
-  // accumulate mean
+  // Accumulate mean
   for (int i = 0; i < n_sig; ++i) {
-    x = x+ w(i)*Xpred.col(i); //weighted column i
+    x = x + w(i)*Xpred.col(i); //weighted column i
   }
 }
 
 void Tools::PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred, const VectorXd& w, const int angleIdx) {
   int n_sig = Xpred.cols();
-  VectorXd col;
+  VectorXd x_diff;
   // clear previous value in P
   P.fill(0.0);
   
   // accumulate covariance
   for (int i = 0; i < n_sig; ++i){
-    col = Xpred.col(i)-x;
-    //std::cout << "col pre - " << i << ":\n" << col << "\n\n";
-    //normalize angular differences between -pi and pi
-    while (col(angleIdx)> M_PI) col(angleIdx)-=2.*M_PI;
-    while (col(angleIdx)< -M_PI) col(angleIdx)+=2.*M_PI;
-    //if (angleIdx >= 0) {
-    //    col(angleIdx) = NormAngle(col(angleIdx));
-    //}
-    //std::cout << "col post - " << i << ":\n" << col << "\n\n";
-    MatrixXd tmp(5,5);
-    tmp = w(i)*col*col.transpose();
-    //std::cout << "tmp matrix - " << i << ":\n" << tmp << "\n\n";
-    P = P + w(i)*col*col.transpose();
+    x_diff = Xpred.x_diff(i) - x;
+    // Normalize angular differences between -pi and pi
+    while (x_diff(angleIdx) > M_PI) x_diff(angleIdx) -= 2.*M_PI;
+    while (x_diff(angleIdx) < -M_PI) x_diff(angleIdx) += 2.*M_PI;
+
+    P = P + w(i)*x_diff*x_diff.transpose();
   }
 
-}
-
-double Tools::NormAngle(double phi) {
-  // normalize phi between -pi and pi
-  if ((phi >= -M_PI)&&(phi <= M_PI)){
-    // already in range
-    return phi;
-  }
-  else if (phi < 0) {
-    // phi too negative
-    double tmp;
-    tmp = phi - M_PI;
-    tmp = -remainder(-tmp,(2*M_PI))+M_PI;
-    //std::cout<<"phi raw = "<<phi<<"\n";
-    //std::cout<<"phi = "<<phi/M_PI<<"\ntmp = "<<tmp/M_PI<<"\n\n";
-    return tmp;
-  }
-      //TODO
-  else {
-    // phi too positive
-    double tmp;
-    tmp = phi + M_PI;
-    tmp = remainder(tmp,(2*M_PI));
-    tmp -= M_PI;
-    //std::cout<<"phi raw = "<<phi<<"\n";
-    //std::cout<<"phi = "<<phi/M_PI<<"\ntmp = "<<tmp/M_PI<<"\n\n";
-    return tmp;
-  }
 }
 
 void Tools::Cartesian2Polar(const MatrixXd& X, MatrixXd& Z, const int n) {
   // From lesson 26
   for (int i = 0; i < n; ++i) {
-    float rho, phi;
-    rho = sqrt(X(0,i)*X(0,i)+X(1,i)*X(1,i));
-    if (rho < 0.001) rho = 0.001;
-    phi = atan2(X(1,i), X(0,i));
+     
+    float px, py, rho, phi;
+    px = X(0,i); // x-position
+    py = X(1,i); // y-position
+    rho = sqrt(px*px + py*py); // velocity magnitude
+    if (rho < 0.001) {
+      rho = 0.001;
+    }
+    phi = atan2(py, px); // velocity direction
     
     float vx, vy;
-    vx = cos(X(3,i))*X(2,i);
-    vy = sin(X(3,i))*X(2,i);
+    vx = cos(X(3,i))*X(2,i); // x velocity
+    vy = sin(X(3,i))*X(2,i); // y velocity
     
-    float rho_dot = (X(0,i)*vx + X(1,i)*vy)/rho;
+    float rho_dot = (px*vx + py*vy)/rho; // range of change of velocity
     Z.col(i) << rho, phi, rho_dot;
   }
 }
