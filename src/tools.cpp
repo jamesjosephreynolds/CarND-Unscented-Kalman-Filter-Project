@@ -47,7 +47,7 @@ VectorXd Tools::Polar2Cartesian(const VectorXd& radar_meas) {
   /**
    * Convert polar coordinates to Cartesian.
    */
-  VectorXd f_x(5,1);
+  VectorXd f_x(5);
   f_x.fill(0.0);
   
   // From Lesson 14
@@ -67,32 +67,30 @@ void Tools::GenSigmaPts(MatrixXd& Xsig_aug, const VectorXd& x, const MatrixXd& P
                     double std_a, double std_yawdd, double lambda, int n_x, int n_aug) {
   /*
    * Augment state vector and covariance matrix, calculate
-   *augmented sigma point matrix
+   * augmented sigma point matrix
    */
   // From lesson 14
   VectorXd x_aug(n_aug);
   MatrixXd P_aug(n_aug, n_aug);
   
-  //create augmented mean state
+  // Create augmented mean state
   x_aug.fill(0.0);
   x_aug.head(n_x) = x;
   
-  //create augmented covariance matrix
+  // Create augmented covariance matrix
   P_aug.fill(0.0);
-  P_aug.topLeftCorner(n_x,n_x) = P;
-  P_aug(n_aug-2,n_aug-2) = std_a*std_a;
-  P_aug(n_aug-1,n_aug-1) = std_yawdd*std_yawdd;
+  P_aug.topLeftCorner(n_x, n_x) = P;
+  P_aug(n_aug - 2, n_aug - 2) = std_a*std_a;
+  P_aug(n_aug - 1, n_aug - 1) = std_yawdd*std_yawdd;
   
-  //std::cout << "P_aug matrix: " << P_aug << "\n\n";
-  
+  // A = P^(-1)
   MatrixXd A = P_aug.llt().matrixL();
-  //std::cout << "Matrix A (P^-1):\n" << A << "\n\n";
   
+  // Generate augmented sigma points
   Xsig_aug.col(0) = x_aug;
   for (int idx = 0; idx < n_aug; ++idx){
-      Xsig_aug.col(idx+1) = x_aug+sqrt(lambda+n_aug)*A.col(idx);
-      Xsig_aug.col(idx+1+n_aug) = x_aug-sqrt(lambda+n_aug)*A.col(idx);
-    //Xsig_aug(3,idx) = NormAngle(Xsig_aug(3,idx));
+      Xsig_aug.col(idx + 1) = x_aug + sqrt(lambda + n_aug)*A.col(idx);
+      Xsig_aug.col(idx + 1 + n_aug) = x_aug - sqrt(lambda + n_aug)*A.col(idx);
   }
 }
 
@@ -100,9 +98,9 @@ void Tools::PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, i
   /*
    * Use nonlinear f(x,v) to update sigma points
    */
-  //From lesson 21
   
-  for (int i = 0; i < (2*n_aug+1); ++i){
+  //From lesson 21
+  for (int i = 0; i < (2*n_aug + 1); ++i){
     // input values
     double px       = Xsig_aug(0,i); // x-position
     double py       = Xsig_aug(1,i); // y-position
@@ -117,29 +115,27 @@ void Tools::PredSigmaPts(MatrixXd& Xpred, const MatrixXd& Xsig_aug, double dt, i
     
     // check for very small yawd (straight line driving)
     if (fabs(yawd) < 0.001){
-      // straight line driving, use geometry
+      // Straight line driving, use geometry
       px_p = px + v*dt*cos(yaw);
       py_p = py + v*dt*sin(yaw);
     } else {
-      // turning, use calculus
-      px_p = px + v/yawd * (sin(yaw+yawd*dt) - sin(yaw));
-      py_p = py + v/yawd * (cos(yaw) - cos(yaw+yawd*dt));
+      // Turning, use calculus
+      px_p = px + ((v / yawd)*(sin(yaw + yawd*dt) - sin(yaw)));
+      py_p = py + ((v / yawd)*(cos(yaw) - cos(yaw + yawd*dt)));
     }
     
     v_p    = v; // constant longitudinal velocity
     yaw_p  = yaw + yawd*dt; // integrate rate of change
-    //yaw_p = NormAngle(yaw_p);
     yawd_p = yawd; // constant rate of change of direction
     
-    // noise effect
+    // Add noise effects
     px_p   += 0.5*nu_a*dt*dt*cos(yaw);
     py_p   += 0.5*nu_a*dt*dt*sin(yaw);
     v_p    += nu_a*dt;
     yaw_p  += 0.5*nu_yawdd*dt*dt;
-    //yaw_p = NormAngle(yaw_p);
     yawd_p += nu_yawdd*dt;
     
-    // place temp variables back into matrix
+    // Place temp variables back into matrix
     Xpred(0,i) = px_p;
     Xpred(1,i) = py_p;
     Xpred(2,i) = v_p;
