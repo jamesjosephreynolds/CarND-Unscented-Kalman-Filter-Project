@@ -216,6 +216,8 @@ As expected, the UKF model performs as well or better than the EKF for the provi
 
 ## Reflections ##
 
+Near the end of my implementation I was not getting satisfactory results for RMSE, although the whole process flow was completed.  I spent a great deal of time checking and double-checking each step.  In the end, I simply had calculated the timestep `dt` backward, i.e. it was a negative number.  This simple mistake cost me a lot of time, and was difficult to pin down.  In the future I'll be sure to print more intermediate calculations out to the terminal during the implementation phase.  Seeing a negative value in the `dt` would easily raise a red flag had I done this.
+
 My method for normalizing angles between `-pi` and `pi` is taken directly from the lessons material.  However, early on, this function would become stuck in an infinite `while()` loop, as the estimates diverged.  While this only manifested due to running incomplete code, it still may not be a robust solution.  A modulo (`%`) operation should be able to give the same results without the risk of critical failure. 
 
 Like the first project in the second term, this project is mainly an exercising in copying/moving code from the lesson material into the provided starter code.
