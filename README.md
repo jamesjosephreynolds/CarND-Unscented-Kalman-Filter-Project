@@ -205,6 +205,15 @@ As expected, the UKF model performs as well or better than the EKF for the provi
 |`vx` |0.357 |0.579 |0.400 
 |`vy` |0.244 |1.634 |0.300 
 
+### NIS ###
+
+*Add NIS evaluation and sensitivity to process noise tuning*
+*Add NIS visualizations*
+
+## Performance Visualization ##
+
+*Add visualizations of state estimate using Kalman Filter tracker tool*
+
 ## Reflections ##
 
 My method for normalizing angles between `-pi` and `pi` is taken directly from the lessons material.  However, early on, this function would become stuck in an infinite `while()` loop, as the estimates diverged.  While this only manifested due to running incomplete code, it still may not be a robust solution.  A modulo (`%`) operation should be able to give the same results without the risk of critical failure. 
