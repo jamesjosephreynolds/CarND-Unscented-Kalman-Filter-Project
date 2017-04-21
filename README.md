@@ -72,6 +72,8 @@ void UKF::Prediction(double delta_t) {
 
 For lidar measurements, the update step can use the same process as the EKF case.  The relationship between state estimate `x_` and measurement `z` is linear.
 
+As recommended in the review of my first project submission, I have pulled the calculation of matrix `PHt` into a separate line of code, in order to reduce the number of matrix multiplication operations.
+
 *From ukf.cpp*
 ```C++
 void UKF::UpdateLidar(MeasurementPackage meas_package) {
@@ -200,3 +202,9 @@ My UKF implementation satisfies the rubric accuracy criteria for both datasets. 
 |`py` |0.085 |0.665 |0.100 
 |`vx` |0.357 |0.579 |0.400 
 |`vy` |0.244 |1.634 |0.300 
+
+## Reflections ##
+
+My method for normalizing angles between `-pi` and `pi` is taken directly from the lessons material.  However, early on, this function would become stuck in an infinite `while()` loop, as the estimates diverged.  While this only manifested due to running incomplete code, it still may not be a robust solution.  A modulo (`%`) operation should be able to give the same results without the risk of critical failure. 
+
+Like the first project in the second term, this project is mainly an exercising in copying/moving code from the lesson material into the provided starter code.
