@@ -185,6 +185,8 @@ Two datafiles are provided to evaluate the accuracy for the final UKF.  Note tha
 
 My UKF implementation satisfies the rubric accuracy criteria for both datasets.  For the case of *obj_pose-laser-radar-synthetic-input.txt* the results are greatly improved with the UKF when compared to the EKF.
 
+As expected, the UKF model performs as well or better than the EKF for the provided test data.  In the case of datafile [obj_pose-laser-radar-synthetic-input.txt](data/obj_pose-laser-radar-synthetic-input.txt), the RMSE for `vy` improves by a factor of 7!
+
 #### RMSE for sample-laser-radar-measurement-data-1.txt ####
 
 |State |RMSE UKF |RMSE EKF |RMSE Limit                     
