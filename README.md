@@ -33,7 +33,7 @@ if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
 }
 else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
   // check for (x,y) not too near (0.0, 0.0)
-  if ((meas_package.raw_measurements_(0) > 0.001) && (meas_package.raw_measurements_(1) > 0.001)) {
+  if ((fabs(meas_package.raw_measurements_(0) > 0.1)) || fabs((meas_package.raw_measurements_(1)) > 0.1)) {
     x_(0) = meas_package.raw_measurements_(0);
     x_(1) = meas_package.raw_measurements_(1);
   } else {
@@ -176,6 +176,20 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   x_ += K*(z-z_pred);
   P_ -= K*S*K.transpose();
 ```
+#### Note ####
+
+In order to run kalman_tracker.py with only the radar data, I had to add intermediate predict steps in order to maintain numerical stability.  This was suggested [here](https://discussions.udacity.com/t/numerical-instability-of-the-implementation/230449/3).  This was not necessary to run the basic test datafiles.
+
+*From ukf.cpp
+```C++
+// handle large delta t to keep predictions numerically stable
+while (dt > 0.1)
+{
+  const double dt_small = 0.05;
+  Prediction(dt_small);
+  dt -= dt_small;
+}
+```
 
 ## Performance ##
 
@@ -212,7 +226,14 @@ As expected, the UKF model performs as well or better than the EKF for the provi
 
 ## Performance Visualization ##
 
-*Add visualizations of state estimate using Kalman Filter tracker tool*
+![Whoops, where's my image](data/radar_and_lidar.png)
+*Results using both sensors*
+
+![Whoops, where's my image](data/lidar_only.png)
+*Results using only lidar*
+
+![Whoops, where's my image](data/radar_only.png)
+*Results using only radar*
 
 ## Reflections ##
 
