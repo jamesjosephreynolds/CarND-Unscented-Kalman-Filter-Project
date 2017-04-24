@@ -55,7 +55,7 @@ VectorXd Tools::Polar2Cartesian(const VectorXd& radar_meas) {
   double phi = radar_meas(1);
   
   f_x << rho*cos(phi),
-        -rho*sin(phi),
+         rho*sin(phi),
          0,
          0,
          0;

@@ -105,7 +105,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   
   
   if (!is_initialized_){
-    std::cout<<"Initialize\n";
+    //std::cout<<"Initialize\n";
     
     // initialize time and CTRV state
     time_us_ = meas_package.timestamp_;
@@ -124,7 +124,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     }
     else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
       // check for (x,y) not too near (0.0, 0.0)
-      if ((meas_package.raw_measurements_(0) > 0.001) && (meas_package.raw_measurements_(1) > 0.001)) {
+      if ((fabs(meas_package.raw_measurements_(0) > 0.1)) || fabs((meas_package.raw_measurements_(1)) > 0.1)) {
         x_(0) = meas_package.raw_measurements_(0);
         x_(1) = meas_package.raw_measurements_(1);
       } else {
@@ -147,6 +147,13 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
         // update time information only if radar is enabled
         double dt = 0.000001*(meas_package.timestamp_-time_us_);
         time_us_ = meas_package.timestamp_;
+        
+        while (dt > 0.1)
+        {
+          const double dt_small = 0.05;
+          Prediction(dt_small);
+          dt -= dt_small;
+        }
     
         // predict and update
         Prediction(dt);
@@ -157,6 +164,13 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
         // update time information only if lidar is enabled
         double dt = 0.000001*(meas_package.timestamp_-time_us_);
         time_us_ = meas_package.timestamp_;
+        
+        while (dt > 0.1)
+        {
+          const double dt_small = 0.05;
+          Prediction(dt_small);
+          dt -= dt_small;
+        }
         
         // predict and update
         Prediction(dt);
@@ -315,6 +329,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   } else {
     NIS_mean_ = NIS_radar_;
   }
-  std::cout << "NIS: " << NIS_radar_ << ", mean: " << NIS_mean_ << "\n\n";
+  //std::cout << "NIS: " << NIS_radar_ << ", mean: " << NIS_mean_ << "\n\n";
   
 }
