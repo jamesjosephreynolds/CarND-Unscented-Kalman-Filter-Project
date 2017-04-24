@@ -146,6 +146,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
         double dt = 0.000001*(meas_package.timestamp_-time_us_);
         time_us_ = meas_package.timestamp_;
         
+        // handle large delta t to keep predictions numerically stable
         while (dt > 0.1)
         {
           const double dt_small = 0.05;
@@ -163,6 +164,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
         double dt = 0.000001*(meas_package.timestamp_-time_us_);
         time_us_ = meas_package.timestamp_;
         
+        // handle large delta t to keep predictions numerically stable
         while (dt > 0.1)
         {
           const double dt_small = 0.05;
