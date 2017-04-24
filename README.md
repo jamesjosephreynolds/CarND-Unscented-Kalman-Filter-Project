@@ -226,6 +226,12 @@ As expected, the UKF model performs as well or better than the EKF for the provi
 
 ## Performance Visualization ##
 
+The results from the Kalman Tracker visualization tool are shown below.  As expected, the case where both sensors are used via UKF fusion scheme produces much better results than either case with a single sensor.  Interestingly, a modification, above, was necessary to successfully run the tool with only radar data.  Else the software eventually become stuck (presumably in a while loop with diverging numerical results).
+
+In the case of lidar only, the velocity components of the state vector are an order of magnitude worse than with sensor fusion.
+
+In the case of radar only, the positions components of the state vector are an order of magnitude worse, and the velocity components are about 5x worse.
+
 ![Whoops, where's my image](data/radar_and_lidar.png)
 *Results using both sensors*
 
