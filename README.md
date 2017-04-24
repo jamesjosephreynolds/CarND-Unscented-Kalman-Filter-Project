@@ -219,11 +219,6 @@ As expected, the UKF model performs as well or better than the EKF for the provi
 |`vx` |0.357 |0.579 |0.400 
 |`vy` |0.244 |1.634 |0.300 
 
-### NIS ###
-
-*Add NIS evaluation and sensitivity to process noise tuning*
-*Add NIS visualizations*
-
 ## Performance Visualization ##
 
 The results from the Kalman Tracker visualization tool are shown below.  As expected, the case where both sensors are used via UKF fusion scheme produces much better results than either case with a single sensor.  Interestingly, a modification, above, was necessary to successfully run the tool with only radar data.  Else the software eventually become stuck (presumably in a while loop with diverging numerical results).
