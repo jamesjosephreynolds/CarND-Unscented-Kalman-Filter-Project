@@ -165,7 +165,7 @@ void Tools::PredCovariance(MatrixXd& P, const VectorXd& x, const MatrixXd& Xpred
   
   // accumulate covariance
   for (int i = 0; i < n_sig; ++i){
-    x_diff = Xpred.x_diff(i) - x;
+    x_diff = Xpred.col(i) - x;
     // Normalize angular differences between -pi and pi
     while (x_diff(angleIdx) > M_PI) x_diff(angleIdx) -= 2.*M_PI;
     while (x_diff(angleIdx) < -M_PI) x_diff(angleIdx) += 2.*M_PI;
