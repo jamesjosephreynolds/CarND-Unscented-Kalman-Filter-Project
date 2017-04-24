@@ -78,8 +78,6 @@ UKF::UKF() {
   // Consistency measures
   NIS_laser_ = 0.0;
   NIS_radar_ = 0.0;
-  NIS_mean_ = 0.0;
-  n_NIS_ = 0;
   
   // Mean and covariance weights
   weights_ = VectorXd(2*n_aug_+1);
@@ -241,6 +239,11 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   MatrixXd K = PHt * S.inverse();
   x_ = x_ + (K * y);
   P_ = (I - K * H) * P_;
+  
+  // Current NIS value
+  NIS_laser_ = y.transpose()*S.inverse()*y;
+  
+  //std::cout << "NIS: " << NIS_lidar_ << ", mean: " << NIS_mean_ << "\n\n";
     
 }
 
@@ -299,36 +302,18 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   K = Tc*S.inverse();
   
   // Update state mean and covariance matrix (reuse z_err)
-  z_err = z-z_pred;
+  z_err = z - z_pred;
   
   //angle normalization (-pi, pi) in z domain
-  while (z_err(RADPHIIDX)> M_PI) z_err(RADPHIIDX)-=2.*M_PI;
-  while (z_err(RADPHIIDX)<-M_PI) z_err(RADPHIIDX)+=2.*M_PI;
+  while (z_err(RADPHIIDX) >  M_PI) z_err(RADPHIIDX) -= 2.*M_PI;
+  while (z_err(RADPHIIDX) < -M_PI) z_err(RADPHIIDX) += 2.*M_PI;
   
-  x_ += K*(z-z_pred);
+  x_ += K*(z - z_pred);
   P_ -= K*S*K.transpose();
-  
-  // Calculate NIS
-  MatrixXd zkp1(n_radz_, 1); //z at time k + 1
-  
-  // Helper function requires MatrixXd, but zpk1 is really just a column
-  // Convert updated state vector x into measurement domain x -> z
-  tools.Cartesian2Polar(x_, zkp1, 1);
-  
-  // Switch back to VectorXd variable
-  z = zkp1.col(0);
-  z_err = z - z_pred;
   
   // Current NIS value
   NIS_radar_ = z_err.transpose()*S.inverse()*z_err;
-  n_NIS_ += 1; // number of NIS samples
   
-  // Average NIS value
-  if (n_NIS_ > 1) {
-    NIS_mean_ = (NIS_radar_ + (n_NIS_ - 1)*NIS_mean_)/n_NIS_;
-  } else {
-    NIS_mean_ = NIS_radar_;
-  }
   //std::cout << "NIS: " << NIS_radar_ << ", mean: " << NIS_mean_ << "\n\n";
   
 }

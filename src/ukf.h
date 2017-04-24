@@ -82,13 +82,7 @@ public:
 
   ///* the current NIS for laser
   double NIS_laser_;
-  
-  ///* number of samples for NIS mean value
-  int n_NIS_;
-  
-  ///* running average of NIS results
-  double NIS_mean_;
-  
+   
   // instance of Tools for utility functions
   Tools tools;
 
